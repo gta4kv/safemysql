@@ -4,8 +4,8 @@ namespace SafeMySQL;
 use mysqli;
 use mysqli_result;
 use SafeMySQL\Exception\ConnectionException;
-use SafeMySQL\Exception\InvalidArgumentsException;
-use SafeMySQL\Exception\InvalidOptionsException;
+use SafeMySQL\Exception\InvalidArgumentException;
+use SafeMySQL\Exception\InvalidOptionException;
 use SafeMySQL\Exception\QueryException;
 
 /**
@@ -30,7 +30,7 @@ use SafeMySQL\Exception\QueryException;
  * ?s ("string")  - strings (also DATE, FLOAT and DECIMAL)
  * ?i ("integer") - the name says it all
  * ?n ("name")    - identifiers (table and field names)
- * ?a ("array")   - complex placeholder for IN() operator  (substituted with string of 'a','b','c' format, without parentesis)
+ * ?a ("array")   - complex placeholder for IN() operator  (substituted with string of 'a','b','c' format, without parenthesis)
  * ?u ("update")  - complex placeholder for SET operator (substituted with string of `field`='value',`field`='value' format)
  * and
  * ?p ("parsed") - special type placeholder, for inserting already parsed statements without any processing, to avoid double parsing.
@@ -106,7 +106,7 @@ class SafeMySQL
      * SafeMySQL constructor.
      * @param Options $options
      * @throws ConnectionException
-     * @throws InvalidOptionsException
+     * @throws InvalidOptionException
      */
     public function __construct(Options $options)
     {
@@ -118,7 +118,7 @@ class SafeMySQL
 
                 return;
             } else {
-                throw new InvalidOptionsException('MySQLi option must be valid instance of MySQLi class');
+                throw new InvalidOptionException('MySQLi option must be valid instance of MySQLi class');
             }
         }
 
@@ -138,7 +138,7 @@ class SafeMySQL
         }
 
         if (!$this->connection->set_charset($this->options->getDbCharset())) {
-            throw new InvalidOptionsException($this->connection->error);
+            throw new InvalidOptionException($this->connection->error);
         }
     }
 
@@ -208,11 +208,11 @@ class SafeMySQL
 
     /**
      * @param string $query
-     * @param array ...$args
+     * @param array $args
      * @return string
-     * @throws InvalidArgumentsException
+     * @throws InvalidArgumentException
      */
-    protected function prepareQuery($query, ...$args)
+    protected function prepareQuery($query, $args)
     {
         $prepared = '';
 
@@ -222,7 +222,7 @@ class SafeMySQL
         $placeholders = floor(count($array) / 2);
 
         if ($arguments != $placeholders) {
-            throw new InvalidArgumentsException("Number of args ($arguments) doesn't match number of placeholders ($placeholders) in [$query]");
+            throw new InvalidArgumentException("Number of args ($arguments) doesn't match number of placeholders ($placeholders) in [$query]");
         }
 
         foreach ($array as $i => $part) {
@@ -232,6 +232,7 @@ class SafeMySQL
             }
 
             $value = array_shift($args);
+
             switch ($part) {
                 case '?n':
                     $part = $this->escapeIdent($value);
@@ -261,7 +262,7 @@ class SafeMySQL
     /**
      * @param $value
      * @return string
-     * @throws InvalidArgumentsException
+     * @throws InvalidArgumentException
      */
     protected function escapeIdent($value)
     {
@@ -269,7 +270,7 @@ class SafeMySQL
             return '`' . str_replace('`', '``', $value) . '`';
         }
 
-        throw new InvalidArgumentsException('Empty value for identifier (?n) placeholder');
+        throw new InvalidArgumentException('Empty value for identifier (?n) placeholder');
     }
 
     /**
@@ -288,7 +289,7 @@ class SafeMySQL
     /**
      * @param null|integer $value
      * @return bool|string
-     * @throws InvalidArgumentsException
+     * @throws InvalidArgumentException
      */
     protected function escapeInt($value)
     {
@@ -296,7 +297,7 @@ class SafeMySQL
             return 'NULL';
         }
         if (!is_numeric($value)) {
-            throw new InvalidArgumentsException('Integer (?i) placeholder expects numeric value, ' . gettype($value) . ' given');
+            throw new InvalidArgumentException('Integer (?i) placeholder expects numeric value, ' . gettype($value) . ' given');
         }
         if (is_float($value)) {
             $value = number_format($value, 0, '.', ''); // may lose precision on big numbers
@@ -308,7 +309,7 @@ class SafeMySQL
     /**
      * @param $data
      * @return string|void
-     * @throws InvalidArgumentsException
+     * @throws InvalidArgumentException
      */
     protected function createIn(array $data)
     {
@@ -328,12 +329,12 @@ class SafeMySQL
     /**
      * @param array $data
      * @return null|string
-     * @throws InvalidArgumentsException
+     * @throws InvalidArgumentException
      */
     protected function createSet(array $data)
     {
         if (!$data) {
-            throw new InvalidArgumentsException('Empty array for SET (?u) placeholder');
+            throw new InvalidArgumentException('Empty array for SET (?u) placeholder');
         }
 
         $query = $comma = '';
@@ -539,9 +540,7 @@ class SafeMySQL
      */
     public function getIndCol($index, $query, ...$args)
     {
-        $args = func_get_args();
-        $index = array_shift($args);
-        $query = $this->prepareQuery($args);
+        $query = $this->prepareQuery($query, $args);
 
         $ret = [];
         if ($res = $this->rawQuery($query)) {
