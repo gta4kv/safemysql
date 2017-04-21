@@ -1,9 +1,12 @@
 <?php
 namespace SafeMySQL;
 
-use Exception;
 use mysqli;
 use mysqli_result;
+use SafeMySQL\Exception\ConnectionException;
+use SafeMySQL\Exception\InvalidArgumentsException;
+use SafeMySQL\Exception\InvalidOptionsException;
+use SafeMySQL\Exception\QueryException;
 
 /**
  * @author col.shrapnel@gmail.com
@@ -102,6 +105,8 @@ class SafeMySQL
     /**
      * SafeMySQL constructor.
      * @param Options $options
+     * @throws ConnectionException
+     * @throws InvalidOptionsException
      */
     public function __construct(Options $options)
     {
@@ -113,8 +118,7 @@ class SafeMySQL
 
                 return;
             } else {
-                $this->error('MySQLi option must be valid instance of MySQLi class');
-                die;
+                throw new InvalidOptionsException('MySQLi option must be valid instance of MySQLi class');
             }
         }
 
@@ -122,50 +126,20 @@ class SafeMySQL
             $this->options->setDbHost('p:' . $this->options->getDbHost());
         }
 
-        $this->connection = new mysqli(
+
+        $this->connection = @new mysqli(
             $this->options->getDbHost(), $this->options->getDbUser(), $this->options->getDbPass(),
             $this->options->getDbName(), $this->options->getDbPort(), $this->options->getDbPort()
         );
 
+
         if ($this->connection->connect_error) {
-            $this->error($this->connection->connect_errno . ' ' . $this->connection->connect_error);
+            throw new ConnectionException($this->connection->connect_errno . ' ' . $this->connection->connect_error);
         }
 
-        $this->connection->set_charset($this->options->getDbCharset()) or $this->error($this->connection->error);
-    }
-
-    /**
-     * @param string $error
-     * @throws Exception
-     */
-    protected function error($error)
-    {
-        $error = __CLASS__ . ': ' . $error;
-
-        if ($this->options->getExceptionClass() instanceof Exception) {
-            throw new ($this->options->getExceptionClass())($error);
-        } else {
-            $error .= '. Error initiated in ' . $this->getCaller() . ', thrown';
-            trigger_error($error, E_USER_ERROR);
+        if (!$this->connection->set_charset($this->options->getDbCharset())) {
+            throw new InvalidOptionsException($this->connection->error);
         }
-    }
-
-    /**
-     * @return string
-     */
-    protected function getCaller()
-    {
-        $traces = debug_backtrace();
-        $caller = '';
-        foreach ($traces as $trace) {
-            if (isset($trace['class']) && $trace['class'] == __CLASS__) {
-                $caller = $trace['file'] . ' on line ' . $trace['line'];
-            } else {
-                break;
-            }
-        }
-
-        return $caller;
     }
 
     /**
@@ -188,7 +162,8 @@ class SafeMySQL
      * also logs some stats like profiling info and error message
      *
      * @param string $query - a regular SQL query
-     * @return mysqli_result|boolean result resource or FALSE on error
+     * @return bool|mysqli_result result resource or FALSE on error
+     * @throws QueryException
      */
     protected function rawQuery($query)
     {
@@ -210,7 +185,7 @@ class SafeMySQL
             $this->stats[$key]['error'] = $error;
             $this->cutStats();
 
-            $this->error('$error. Full query: [$query]');
+            throw new QueryException("$error; Full query: [$query]");
         }
 
         $this->cutStats();
@@ -235,6 +210,7 @@ class SafeMySQL
      * @param string $query
      * @param array ...$args
      * @return string
+     * @throws InvalidArgumentsException
      */
     protected function prepareQuery($query, ...$args)
     {
@@ -246,7 +222,7 @@ class SafeMySQL
         $placeholders = floor(count($array) / 2);
 
         if ($arguments != $placeholders) {
-            $this->error("Number of args ($arguments) doesn't match number of placeholders ($placeholders) in [$query]");
+            throw new InvalidArgumentsException("Number of args ($arguments) doesn't match number of placeholders ($placeholders) in [$query]");
         }
 
         foreach ($array as $i => $part) {
@@ -285,6 +261,7 @@ class SafeMySQL
     /**
      * @param $value
      * @return string
+     * @throws InvalidArgumentsException
      */
     protected function escapeIdent($value)
     {
@@ -292,7 +269,7 @@ class SafeMySQL
             return '`' . str_replace('`', '``', $value) . '`';
         }
 
-        return $this->error("Empty value for identifier (?n) placeholder");
+        throw new InvalidArgumentsException('Empty value for identifier (?n) placeholder');
     }
 
     /**
@@ -305,12 +282,13 @@ class SafeMySQL
             return 'NULL';
         }
 
-        return "'" . $this->connection->real_escape_string($this->connection, $value) . "'";
+        return "'" . $this->connection->real_escape_string($value) . "'";
     }
 
     /**
      * @param null|integer $value
      * @return bool|string
+     * @throws InvalidArgumentsException
      */
     protected function escapeInt($value)
     {
@@ -318,9 +296,7 @@ class SafeMySQL
             return 'NULL';
         }
         if (!is_numeric($value)) {
-            $this->error("Integer (?i) placeholder expects numeric value, " . gettype($value) . " given");
-
-            return false;
+            throw new InvalidArgumentsException('Integer (?i) placeholder expects numeric value, ' . gettype($value) . ' given');
         }
         if (is_float($value)) {
             $value = number_format($value, 0, '.', ''); // may lose precision on big numbers
@@ -332,17 +308,14 @@ class SafeMySQL
     /**
      * @param $data
      * @return string|void
+     * @throws InvalidArgumentsException
      */
-    protected function createIn($data)
+    protected function createIn(array $data)
     {
-        if (!is_array($data)) {
-            $this->error("Value for IN (?a) placeholder should be array");
-
-            return null;
-        }
         if (!$data) {
             return 'NULL';
         }
+
         $query = $comma = '';
         foreach ($data as $value) {
             $query .= $comma . $this->escapeString($value);
@@ -353,27 +326,20 @@ class SafeMySQL
     }
 
     /**
-     * @param $data
-     * @return string|null
+     * @param array $data
+     * @return null|string
+     * @throws InvalidArgumentsException
      */
-    protected function createSet($data)
+    protected function createSet(array $data)
     {
-        if (!is_array($data)) {
-            $this->error("SET (?u) placeholder expects array, " . gettype($data) . " given");
-
-            return null;
-        }
-
         if (!$data) {
-            $this->error("Empty array for SET (?u) placeholder");
-
-            return null;
+            throw new InvalidArgumentsException('Empty array for SET (?u) placeholder');
         }
 
         $query = $comma = '';
         foreach ($data as $key => $value) {
             $query .= $comma . $this->escapeIdent($key) . '=' . $this->escapeString($value);
-            $comma = ",";
+            $comma = ',';
         }
 
         return $query;
@@ -691,5 +657,23 @@ class SafeMySQL
     public function getStats()
     {
         return $this->stats;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getCaller()
+    {
+        $traces = debug_backtrace();
+        $caller = '';
+        foreach ($traces as $trace) {
+            if (isset($trace['class']) && $trace['class'] == __CLASS__) {
+                $caller = $trace['file'] . ' on line ' . $trace['line'];
+            } else {
+                break;
+            }
+        }
+
+        return $caller;
     }
 }

@@ -54,12 +54,7 @@ class Options
     /**
      * @var string
      */
-    private $errorMode = 'exception';
-
-    /**
-     * @var string
-     */
-    private $exceptionClass = Exception::class;
+    private $exceptionClass;
 
     /**
      * @var null|mysqli
@@ -208,22 +203,6 @@ class Options
     public function setUsePersistentConnect($usePersistentConnect)
     {
         $this->usePersistentConnect = $usePersistentConnect;
-    }
-
-    /**
-     * @return string
-     */
-    public function getErrorMode()
-    {
-        return $this->errorMode;
-    }
-
-    /**
-     * @param string $errorMode
-     */
-    public function setErrorMode($errorMode)
-    {
-        $this->errorMode = $errorMode;
     }
 
     /**
