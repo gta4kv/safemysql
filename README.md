@@ -1,4 +1,4 @@
-SafeMySQL
+SafeMySQL [![Build Status](https://travis-ci.org/gta4kv/safemysql.svg?branch=master)](https://travis-ci.org/gta4kv/safemysql)
 =========
 
 SafeMySQL is a PHP class for safe and convenient handling of MySQL queries.
