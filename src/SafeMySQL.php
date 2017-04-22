@@ -489,7 +489,7 @@ class SafeMySQL
     public function getAll($query, ...$args)
     {
         $ret = [];
-        $query = $this->prepareQuery(func_get_args());
+        $query = $this->prepareQuery($query, $args);
 
         if ($res = $this->rawQuery($query)) {
             while ($row = $this->fetch($res)) {
