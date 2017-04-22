@@ -76,7 +76,6 @@ use SafeMySQL\Exception\QueryException;
  */
 class SafeMySQL
 {
-
     /**
      * @var integer
      */
@@ -104,12 +103,16 @@ class SafeMySQL
 
     /**
      * SafeMySQL constructor.
-     * @param Options $options
+     * @param Options|null $options
      * @throws ConnectionException
      * @throws InvalidOptionException
      */
-    public function __construct(Options $options)
+    public function __construct($options)
     {
+        if (!$options instanceof Options) {
+            $options = new Options();
+        }
+
         $this->options = $options;
 
         if ($this->options->getMySQLi()) {
@@ -126,12 +129,10 @@ class SafeMySQL
             $this->options->setDbHost('p:' . $this->options->getDbHost());
         }
 
-
         $this->connection = @new mysqli(
             $this->options->getDbHost(), $this->options->getDbUser(), $this->options->getDbPass(),
             $this->options->getDbName(), $this->options->getDbPort(), $this->options->getDbPort()
         );
-
 
         if ($this->connection->connect_error) {
             throw new ConnectionException($this->connection->connect_errno . ' ' . $this->connection->connect_error);
@@ -168,7 +169,7 @@ class SafeMySQL
     protected function rawQuery($query)
     {
         $start = microtime(true);
-        $res = $this->connection->query($this->connection, $query);
+        $res = $this->connection->query($query);
         $timer = microtime(true) - $start;
 
         $this->stats[] = [
@@ -374,7 +375,7 @@ class SafeMySQL
      */
     public function numRows(mysqli_result $result)
     {
-        $result->num_rows;
+        return $result->num_rows;
     }
 
     /**
@@ -462,7 +463,7 @@ class SafeMySQL
     public function getCol($query, ...$args)
     {
         $ret = [];
-        $query = $this->prepareQuery(func_get_args());
+        $query = $this->prepareQuery($query, $args);
 
         if ($res = $this->rawQuery($query)) {
             while ($row = $this->fetch($res)) {
@@ -641,7 +642,7 @@ class SafeMySQL
      *
      * @return string|null either last executed query or NULL if were none
      */
-    public function lastQuery()
+    public function getLastQuery()
     {
         $last = end($this->stats);
 
@@ -656,23 +657,5 @@ class SafeMySQL
     public function getStats()
     {
         return $this->stats;
-    }
-
-    /**
-     * @return string
-     */
-    protected function getCaller()
-    {
-        $traces = debug_backtrace();
-        $caller = '';
-        foreach ($traces as $trace) {
-            if (isset($trace['class']) && $trace['class'] == __CLASS__) {
-                $caller = $trace['file'] . ' on line ' . $trace['line'];
-            } else {
-                break;
-            }
-        }
-
-        return $caller;
     }
 }

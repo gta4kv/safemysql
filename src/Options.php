@@ -71,10 +71,13 @@ class Options
 
     /**
      * @param mysqli|null $mySQLi
+     * @return $this
      */
     public function setMySQLi($mySQLi)
     {
         $this->mySQLi = $mySQLi;
+
+        return $this;
     }
 
     /**
@@ -87,10 +90,13 @@ class Options
 
     /**
      * @param string $dbHost
+     * @return $this
      */
     public function setDbHost($dbHost)
     {
         $this->dbHost = $dbHost;
+
+        return $this;
     }
 
     /**
@@ -103,10 +109,13 @@ class Options
 
     /**
      * @param string $dbUser
+     * @return $this
      */
     public function setDbUser($dbUser)
     {
         $this->dbUser = $dbUser;
+
+        return $this;
     }
 
     /**
@@ -119,10 +128,13 @@ class Options
 
     /**
      * @param string $dbPass
+     * @return $this
      */
     public function setDbPass($dbPass)
     {
         $this->dbPass = $dbPass;
+
+        return $this;
     }
 
     /**
@@ -135,10 +147,13 @@ class Options
 
     /**
      * @param string $dbName
+     * @return $this
      */
     public function setDbName($dbName)
     {
         $this->dbName = $dbName;
+
+        return $this;
     }
 
     /**
@@ -151,10 +166,13 @@ class Options
 
     /**
      * @param string $dbPort
+     * @return $this
      */
     public function setDbPort($dbPort)
     {
         $this->dbPort = $dbPort;
+
+        return $this;
     }
 
     /**
@@ -167,10 +185,13 @@ class Options
 
     /**
      * @param string $dbSocket
+     * @return $this
      */
     public function setDbSocket($dbSocket)
     {
         $this->dbSocket = $dbSocket;
+
+        return $this;
     }
 
     /**
@@ -183,10 +204,13 @@ class Options
 
     /**
      * @param string $dbCharset
+     * @return $this
      */
     public function setDbCharset($dbCharset)
     {
         $this->dbCharset = $dbCharset;
+
+        return $this;
     }
 
     /**
@@ -199,10 +223,13 @@ class Options
 
     /**
      * @param boolean $usePersistentConnect
+     * @return $this
      */
     public function setUsePersistentConnect($usePersistentConnect)
     {
         $this->usePersistentConnect = $usePersistentConnect;
+
+        return $this;
     }
 
     /**
@@ -215,9 +242,12 @@ class Options
 
     /**
      * @param string $exceptionClass
+     * @return $this
      */
     public function setExceptionClass($exceptionClass)
     {
         $this->exceptionClass = $exceptionClass;
+
+        return $this;
     }
 }
